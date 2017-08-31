@@ -7,7 +7,7 @@ install_ss_panel_mod_v3(){
 	wget -c https://raw.githubusercontent.com/mmmwhy/ss-panel-and-ss-py-mu/master/lnmp1.3.zip && unzip lnmp1.3.zip && cd lnmp1.3 && chmod +x install.sh && ./install.sh lnmp
 	cd /home/wwwroot/default/
 	rm -rf index.html
-	git clone https://git.coding.net/mmmwhy/mod.git tmp && mv tmp/.git . && rm -rf tmp && git reset --hard
+	git clone https://github.com/mmmwhy/mod.git tmp && mv tmp/.git . && rm -rf tmp && git reset --hard
 	cp config/.config.php.example config/.config.php
 	chattr -i .user.ini
 	mv .user.ini public
@@ -17,6 +17,8 @@ install_ss_panel_mod_v3(){
 	chattr +i public/.user.ini
 	wget -N -P  /usr/local/nginx/conf/ http://home.ustc.edu.cn/~mmmwhy/nginx.conf 
 	service nginx restart
+	IPAddress=`wget http://members.3322.org/dyndns/getip -O - -q ; echo`;
+	sed -i "s#103.74.192.11#${IPAddress}#" /home/wwwroot/default/sql/sspanel.sql
 	mysql -uroot -proot -e"create database sspanel;" 
 	mysql -uroot -proot -e"use sspanel;" 
 	mysql -uroot -proot sspanel < /home/wwwroot/default/sql/sspanel.sql
@@ -32,13 +34,6 @@ install_ss_panel_mod_v3(){
 	echo '0 0 * * * php /home/wwwroot/default/xcat dailyjob' >> /var/spool/cron/root
 	echo '*/1 * * * * php /home/wwwroot/default/xcat checkjob' >> /var/spool/cron/root
 	/sbin/service crond restart
-	IPAddress=`wget http://members.3322.org/dyndns/getip -O - -q ; echo`;
-	echo "#############################################################"
-	echo "# 安装完成，登录http://${IPAddress}看看吧~                  #"
-	echo "# Github: https://github.com/mmmwhy/ss-panel-and-ss-py-mu   #"
-	echo "# Author: 91vps                                             #"
-	echo "# Blog: https://91vps.us/2017/05/27/ss-panel-v3-mod/        #"
-	echo "#############################################################"
 }
 install_centos_ssr(){
 	yum -y update
@@ -67,6 +62,9 @@ install_centos_ssr(){
 	yum -y install python-devel
 	yum -y install libffi-devel
 	yum -y install openssl-devel
+	yum -y install iptables
+	systemctl stop firewalld.service
+	systemctl disable firewalld.service
 	pip install -r requirements.txt
 	cp apiconfig.py userapiconfig.py
 	cp config.json user-config.json
@@ -98,8 +96,8 @@ install_node(){
 	echo "#############################################################"
 	echo "# One click Install Shadowsocks-Python-Manyuser             #"
 	echo "# Github: https://github.com/mmmwhy/ss-panel-and-ss-py-mu   #"
-	echo "# Author: 91vps                                              #"
-	echo "# https://91vps.us/2017/05/27/ss-panel-v3-mod/              #"
+	echo "# Author: 91vps                                             #"
+	echo "# https://91vps.us/2017/08/24/ss-panel-v3-mod/              #"
 	echo "#############################################################"
 	echo
 	#Check Root
@@ -149,27 +147,56 @@ install_node(){
 	sed -i "2a\NODE_ID = ${UserNODE_ID}" /root/shadowsocks/userapiconfig.py
 	# 启用supervisord
 	echo_supervisord_conf > /etc/supervisord.conf
-  sed -i '$a [program:ssr]\ncommand = python /root/shadowsocks/server.py\nuser = root\nautostart = true\nautorestart = true' /etc/supervisord.conf
+    sed -i '$a [program:ssr]\ncommand = python /root/shadowsocks/server.py\nuser = root\nautostart = true\nautorestart = true' /etc/supervisord.conf
 	supervisord
 	#iptables
-	#iptables -I INPUT -p tcp -m tcp --dport 104 -j ACCEPT
-	#iptables -I INPUT -p udp -m udp --dport 104 -j ACCEPT
-	#iptables -I INPUT -p tcp -m tcp --dport 1024: -j ACCEPT
-	#iptables -I INPUT -p udp -m udp --dport 1024: -j ACCEPT
-	#iptables-save >/etc/sysconfig/iptables
-  echo "-A INPUT -p udp -m udp --dport 1024:65535 -j ACCEPT
-	-A INPUT -p tcp -m tcp --dport 1024:65535 -j ACCEPT
-	-A INPUT -p udp -m udp --dport 104 -j ACCEPT
-	-A INPUT -p tcp -m tcp --dport 104 -j ACCEPT
-	" > /etc/sysconfig/iptables
+	iptables -F
+	iptables -X  
+	iptables -I INPUT -p tcp -m tcp --dport 104 -j ACCEPT
+	iptables -I INPUT -p udp -m udp --dport 104 -j ACCEPT
+	iptables -I INPUT -p tcp -m tcp --dport 1024: -j ACCEPT
+	iptables -I INPUT -p udp -m udp --dport 1024: -j ACCEPT
+	iptables-save >/etc/sysconfig/iptables
 	echo 'iptables-restore /etc/sysconfig/iptables' >> /etc/rc.local
 	echo "/usr/bin/supervisord -c /etc/supervisord.conf" >> /etc/rc.local
 	chmod +x /etc/rc.d/rc.local
 	echo "#############################################################"
 	echo "# 安装完成，节点即将重启使配置生效                          #"
 	echo "# Github: https://github.com/mmmwhy/ss-panel-and-ss-py-mu   #"
-	echo "# Author: 91vps                                              #"
-	echo "# Blog: https://91vps.us/2017/05/27/ss-panel-v3-mod/        #"
+	echo "# Author: 91vps                                             #"
+	echo "# Blog: https://91vps.us/2017/08/24/ss-panel-v3-mod/        #"
+	echo "#############################################################"
+	reboot now
+}
+install_panel_and_node(){
+	install_ss_panel_mod_v3
+	# 取消文件数量限制
+	sed -i '$a * hard nofile 512000\n* soft nofile 512000' /etc/security/limits.conf
+	install_centos_ssr
+	wget -N -P  /root/shadowsocks/ https://raw.githubusercontent.com/mmmwhy/ss-panel-and-ss-py-mu/master/userapiconfig.py
+	# 启用supervisord
+	echo_supervisord_conf > /etc/supervisord.conf
+  sed -i '$a [program:ssr]\ncommand = python /root/shadowsocks/server.py\nuser = root\nautostart = true\nautorestart = true' /etc/supervisord.conf
+	supervisord
+	#iptables
+	systemctl stop firewalld.service
+	systemctl disable firewalld.service
+	yum install iptables -y
+	iptables -F
+	iptables -X  
+	iptables -I INPUT -p tcp -m tcp --dport 104 -j ACCEPT
+	iptables -I INPUT -p udp -m udp --dport 104 -j ACCEPT
+	iptables -I INPUT -p tcp -m tcp --dport 1024: -j ACCEPT
+	iptables -I INPUT -p udp -m udp --dport 1024: -j ACCEPT
+	iptables-save >/etc/sysconfig/iptables
+	echo 'iptables-restore /etc/sysconfig/iptables' >> /etc/rc.local
+	echo "/usr/bin/supervisord -c /etc/supervisord.conf" >> /etc/rc.local
+	chmod +x /etc/rc.d/rc.local
+	echo "#############################################################"
+	echo "# 安装完成，登录http://${IPAddress}看看吧~                  #"
+	echo "# 安装完成，节点即将重启使配置生效                          #"
+	echo "# Github: https://github.com/mmmwhy/ss-panel-and-ss-py-mu   #"
+	echo "# Blog: https://91vps.us/2017/08/24/ss-panel-v3-mod/        #"
 	echo "#############################################################"
 	reboot now
 }
@@ -178,16 +205,16 @@ echo "#############################################################"
 echo "# One click Install SS-panel and Shadowsocks-Py-Mu          #"
 echo "# Github: https://github.com/mmmwhy/ss-panel-and-ss-py-mu   #"
 echo "# Author: 91vps                                             #"
-echo "# Blog: https://91vps.us/2017/05/27/ss-panel-v3-mod/        #"
+echo "# Blog: https://91vps.us/2017/08/24/ss-panel-v3-mod/        #"
 echo "# Please choose the server you want                         #"
-echo "# 1  SS-V3_mod_panel One click Install                      #"
+echo "# 1  SS-V3_mod_panel and node One click Install             #"
 echo "# 2  SS-node One click Install                              #"
 echo "#############################################################"
 echo
 stty erase '^H' && read -p " 请输入数字 [1-2]:" num
 case "$num" in
 	1)
-	install_ss_panel_mod_v3
+	install_panel_and_node
 	;;
 	2)
 	install_node
