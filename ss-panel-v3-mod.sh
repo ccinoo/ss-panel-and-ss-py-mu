@@ -38,21 +38,17 @@ install_ss_panel_mod_v3(){
 install_centos_ssr(){
 	yum -y update
 	yum -y install git 
-	yum -y install python-setuptools && easy_install pip 
+	yum -y install python-setuptools 
+	curl https://raw.githubusercontent.com/mmmwhy/ss-panel-and-ss-py-mu/master/get-pip.py -o get-pip.py
+	python get-pip.py
+	rm -rf python get-pip.py
 	yum -y groupinstall "Development Tools" 
-	#512M的小鸡增加1G的Swap分区
-	dd if=/dev/zero of=/var/swap bs=1024 count=1048576
-	mkswap /var/swap
-	chmod 0644 /var/swap
-	swapon /var/swap
-	echo '/var/swap   swap   swap   default 0 0' >> /etc/fstab
-	wget https://github.com/jedisct1/libsodium/releases/download/1.0.13/libsodium-1.0.13.tar.gz
+	wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.13.tar.gz
 	tar xf libsodium-1.0.13.tar.gz && cd libsodium-1.0.13
 	./configure && make -j2 && make install
 	echo /usr/local/lib > /etc/ld.so.conf.d/usr_local_lib.conf
 	ldconfig
-	yum -y install python-setuptools
-	easy_install supervisor
+	pip install supervisor
 	#clone shadowsocks
 	cd /root
 	git clone -b manyuser https://github.com/glzjin/shadowsocks.git "/root/shadowsocks"
@@ -74,7 +70,7 @@ install_ubuntu_ssr(){
 	apt-get install supervisor lsof -y
 	apt-get install build-essential wget -y
 	apt-get install iptables git -y
-	wget https://github.com/jedisct1/libsodium/releases/download/1.0.13/libsodium-1.0.13.tar.gz
+	wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.13.tar.gz
 	tar xf libsodium-1.0.13.tar.gz && cd libsodium-1.0.13
 	./configure && make -j2 && make install
 	echo /usr/local/lib > /etc/ld.so.conf.d/usr_local_lib.conf
